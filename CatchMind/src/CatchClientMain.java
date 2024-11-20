@@ -14,12 +14,13 @@ import java.net.Socket;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class CatchClient extends JFrame {
+public class CatchClientMain extends JFrame {
 
 	private JPanel contentPane;
 	private JTextField txtUserName;
 	private JTextField txtPortNumber;
 	private JLabel characterImageLabel;
+	private String chosenChar;
 
 	/**
 	 * Launch the application.
@@ -28,7 +29,7 @@ public class CatchClient extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					CatchClient frame = new CatchClient();
+					CatchClientMain frame = new CatchClientMain();
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -40,9 +41,9 @@ public class CatchClient extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public CatchClient() {
+	public CatchClientMain() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(250, 50, 1000, 750); //4:3 
+		setBounds(250, 50, 1000, 750); //4:3 윈도우 크기, 위치 지정
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -80,6 +81,7 @@ public class CatchClient extends JFrame {
             
             radioButton.addActionListener(new CharacterSelectionListener());
         }
+        
         //라디오 버튼 이미지
         characterImageLabel = new JLabel();
         characterImageLabel.setBounds(450, 300, 200, 100); 
@@ -109,37 +111,42 @@ public class CatchClient extends JFrame {
 		
 		JLabel lblPortNumber = new JLabel("Port Number");
 		lblPortNumber.setFont(new Font("System", Font.BOLD, 20));
-		lblPortNumber.setBounds(270, 550, 150, 33);
+		lblPortNumber.setBounds(270, 520, 150, 33);
 		contentPane.add(lblPortNumber);
 		
 		txtPortNumber = new JTextField(); // 포트넘버 입력 창 
 		txtPortNumber.setText("30000");
 		txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
 		txtPortNumber.setColumns(10);
-		txtPortNumber.setBounds(450, 550, 116, 33);
+		txtPortNumber.setBounds(450, 520, 116, 33);
 		contentPane.add(txtPortNumber);
 		
 		JButton btnConnect = new JButton("연결하기");  //연결 버튼
-		btnConnect.setBounds(400, 650, 205, 38);
+		btnConnect.setBounds(400, 600, 205, 38);
 		contentPane.add(btnConnect);
 		Myaction action = new Myaction();
 		btnConnect.addActionListener(action);
 		txtUserName.addActionListener(action);
 		txtPortNumber.addActionListener(action);
+		
 	}
 	
 	private void updateCharacterImage(String imagePath) {
         ImageIcon imageIcon = new ImageIcon(imagePath); 
         Image img = imageIcon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH); //크기
         characterImageLabel.setIcon(new ImageIcon(img)); 
+        chosenChar = imagePath;
     }
-	class Myaction implements ActionListener // 내부클래스로 액션 이벤트 처리 클래스
+	
+	class Myaction implements ActionListener 
 	{
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			String username = txtUserName.getText().trim();
 			String port_no = txtPortNumber.getText().trim();
+			CatchClientView view = new CatchClientView(username, port_no, chosenChar);
 			setVisible(false);
+			view.setVisible(true);
 		}
 	}
 	
@@ -149,6 +156,7 @@ public class CatchClient extends JFrame {
         public void actionPerformed(ActionEvent e) {
             String selectedImagePath = e.getActionCommand(); 
             updateCharacterImage(selectedImagePath); 
+            
         }
     }
 	
