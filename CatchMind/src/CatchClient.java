@@ -57,14 +57,14 @@ public class CatchClient extends JFrame {
 		contentPane.add(imageLabel);
 		
 		JLabel ChooseChar = new JLabel("캐릭터 선택");
-		ChooseChar.setBounds(270, 200, 200, 33);
+		ChooseChar.setBounds(430, 200, 200, 33);
 		ChooseChar.setFont(new Font("System", Font.BOLD, 25));
 		contentPane.add(ChooseChar);
 		
 		
         JPanel radioPanel = new JPanel();  ///라디오 버튼
-        radioPanel.setLayout(new GridLayout(3, 1, 10, 10));
-        radioPanel.setBounds(450, 100, 150, 200);
+        radioPanel.setLayout(new GridLayout(1, 7));
+        radioPanel.setBounds(250, 250, 500, 20);
         contentPane.add(radioPanel);
 
         String[] characterNames = {"양파", "양배추", "피망", "주먹밥", "샐러드"};
@@ -82,7 +82,7 @@ public class CatchClient extends JFrame {
         }
         //라디오 버튼 이미지
         characterImageLabel = new JLabel();
-        characterImageLabel.setBounds(650, 200, 200, 100); 
+        characterImageLabel.setBounds(450, 300, 200, 100); 
         contentPane.add(characterImageLabel);
 
         if (radioPanel.getComponentCount() > 0) {
@@ -95,32 +95,32 @@ public class CatchClient extends JFrame {
         
 		
 		JLabel lblNewLabel = new JLabel("닉네임");
-		lblNewLabel.setBounds(270, 300, 82, 33);
+		lblNewLabel.setBounds(270, 450, 82, 33);
 		lblNewLabel.setFont(new Font("System", Font.BOLD, 25));
 		contentPane.add(lblNewLabel);
 		
 		
 		txtUserName = new JTextField(); // 닉네임 입력 창
 		txtUserName.setHorizontalAlignment(SwingConstants.CENTER);
-		txtUserName.setBounds(450, 300, 116, 33);
+		txtUserName.setBounds(450, 450, 116, 33);
 		contentPane.add(txtUserName);
 		txtUserName.setColumns(10);
 		
 		
 		JLabel lblPortNumber = new JLabel("Port Number");
 		lblPortNumber.setFont(new Font("System", Font.BOLD, 20));
-		lblPortNumber.setBounds(270, 400, 150, 33);
+		lblPortNumber.setBounds(270, 550, 150, 33);
 		contentPane.add(lblPortNumber);
 		
 		txtPortNumber = new JTextField(); // 포트넘버 입력 창 
 		txtPortNumber.setText("30000");
 		txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
 		txtPortNumber.setColumns(10);
-		txtPortNumber.setBounds(450, 400, 116, 33);
+		txtPortNumber.setBounds(450, 550, 116, 33);
 		contentPane.add(txtPortNumber);
 		
 		JButton btnConnect = new JButton("연결하기");  //연결 버튼
-		btnConnect.setBounds(400, 500, 205, 38);
+		btnConnect.setBounds(400, 650, 205, 38);
 		contentPane.add(btnConnect);
 		Myaction action = new Myaction();
 		btnConnect.addActionListener(action);
