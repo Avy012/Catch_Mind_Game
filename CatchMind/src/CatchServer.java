@@ -17,12 +17,9 @@ public class CatchServer extends JFrame{
 
     private ServerSocket socket; // 서버소켓
     private Socket client_socket; // accept() 에서 생성된 client 소켓
-    private Vector<UserService> UserVec = new Vector<>(); // 연결된 사용자를 저장할 벡터, ArrayList와 같이 동적 배열을 만들어주는 컬렉션 객체이나 동기화로 인해 안전성 향상
+    private Vector<UserService> UserVec = new Vector<>(); // 접속 사용자 수
     private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
 
-    /**
-     * Launch the application.
-     */
     public static void main(String[] args) {   // 스윙 비주얼 디자이너를 이용해 GUI를 만들면 자동으로 생성되는 main 함수
         EventQueue.invokeLater(new Runnable() {
             public void run() {
@@ -77,7 +74,7 @@ public class CatchServer extends JFrame{
                 btnServerStart.setText("Chat Server Running..");
                 btnServerStart.setEnabled(false); // 서버를 더이상 실행시키지 못 하게 막는다
                 txtPortNumber.setEnabled(false); // 더이상 포트번호 수정못 하게 막는다
-                AcceptServer accept_server = new AcceptServer();   // 멀티 스레드 객체 생성
+                AcceptServer accept_server = new AcceptServer(); // 멀티 스레드 객체 생성
                 accept_server.start();
             }
         });

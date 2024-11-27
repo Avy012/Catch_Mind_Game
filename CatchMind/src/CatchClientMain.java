@@ -38,9 +38,7 @@ public class CatchClientMain extends JFrame {
 		});
 	}
 
-	/**
-	 * Create the frame.
-	 */
+	
 	public CatchClientMain() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(250, 50, 1000, 750); //4:3 윈도우 크기, 위치 지정
