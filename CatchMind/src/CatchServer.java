@@ -42,6 +42,7 @@ public class CatchServer {
                 while ((inputLine = input.readUTF()) != null) {
                     for (ClientHandler client : clients) {
                         if (client != this) {
+                        	
                             client.send(inputLine);
                         }
                     }
