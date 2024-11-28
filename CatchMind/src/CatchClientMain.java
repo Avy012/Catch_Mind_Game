@@ -142,7 +142,8 @@ public class CatchClientMain extends JFrame {
 		public void actionPerformed(ActionEvent e) {
 			String username = txtUserName.getText().trim();
 			String port_no = txtPortNumber.getText().trim();
-			CatchClientView view = new CatchClientView(username, port_no, chosenChar);
+			String ip_addr = "127.0.0.1";
+			CatchClientView view = new CatchClientView(username, ip_addr, port_no, chosenChar);
 			setVisible(false);
 			view.setVisible(true);
 		}
