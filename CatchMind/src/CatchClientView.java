@@ -202,7 +202,7 @@ public class CatchClientView extends JFrame {
     
     private void sendDrawCommand(int x1, int y1, int x2, int y2) {
         try {
-        	String colorCode = Integer.toHexString(color.getRGB());
+        	String colorCode = Integer.toString(color.getRGB());
             dos.writeUTF(x1 + " " + y1 + " " + x2 + " " + y2 + " " + colorCode);
             dos.flush();
         } catch (IOException e) {
@@ -219,7 +219,9 @@ public class CatchClientView extends JFrame {
                 int y1 = Integer.parseInt(drawCommand[1]);
                 int x2 = Integer.parseInt(drawCommand[2]);
                 int y2 = Integer.parseInt(drawCommand[3]);
-                Color receivedColor = new Color(Integer.parseInt(drawCommand[4], 16));
+                Color receivedColor = new Color(Integer.parseInt(drawCommand[4]));
+                
+                //System.out.println(Integer.parseInt(drawCommand[4], 16));
                 SwingUtilities.invokeLater(() -> {
                     Graphics g = createcanvas.getGraphics();
                     g.setColor(receivedColor);
