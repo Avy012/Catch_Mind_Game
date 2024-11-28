@@ -38,9 +38,7 @@ public class CatchClientMain extends JFrame {
 		});
 	}
 
-	/**
-	 * Create the frame.
-	 */
+	
 	public CatchClientMain() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(250, 50, 1000, 750); //4:3 윈도우 크기, 위치 지정
@@ -144,7 +142,8 @@ public class CatchClientMain extends JFrame {
 		public void actionPerformed(ActionEvent e) {
 			String username = txtUserName.getText().trim();
 			String port_no = txtPortNumber.getText().trim();
-			CatchClientView view = new CatchClientView(username, port_no, chosenChar);
+			String ip_addr = "127.0.0.1";
+			CatchClientView view = new CatchClientView(username, ip_addr, port_no, chosenChar);
 			setVisible(false);
 			view.setVisible(true);
 		}
