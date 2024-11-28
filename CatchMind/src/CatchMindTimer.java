@@ -6,7 +6,7 @@ public class CatchMindTimer {
     private Timer timer;
     private int timeRemaining;
     private JLabel timerLabel;
-    private Runnable onTimeExpired; // 타이머 종료 시 실행할 작업
+    private Runnable onTimeExpired; // 타이머 종료
 
     public CatchMindTimer(JLabel timerLabel, int initialTime, Runnable onTimeExpired) {
         this.timerLabel = timerLabel;

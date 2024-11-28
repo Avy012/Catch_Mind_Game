@@ -90,7 +90,7 @@ public class Pen extends JFrame implements ActionListener {
             JOptionPane.showMessageDialog(Canvas_space, "게임 종료");
             createcanvas.clearCanvas();
             catchmindtimer.reset(60);
-            Quizmanager.setRandomword(); // 새로운 제시어
+            Quizmanager.setRandomword(); // 새로운 제시
         });
 
         catchmindtimer.start(); // 타이머 시작
