@@ -6,6 +6,7 @@ import java.util.concurrent.*;
 public class CatchServer {
     private final int port;
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    private List<String> userInfo =  new ArrayList<String>();
 
     public CatchServer(int port) {
         this.port = port;
@@ -26,6 +27,8 @@ public class CatchServer {
             serverSocket.close();
         }
     }
+    
+   
 
     private class ClientHandler implements Runnable {
         private final Socket clientSocket;
@@ -39,18 +42,29 @@ public class CatchServer {
         public void run() {
             try (DataInputStream input = new DataInputStream(clientSocket.getInputStream())) {
                 String inputLine;
+                send("Your client number:" + clients.size());
+                for (ClientHandler client : clients) {
+                	client.send(Integer.toString(clients.size()));
+                }
                 while ((inputLine = input.readUTF()) != null) {
-                    for (ClientHandler client : clients) {
-                        if (client != this) {
-                        	
-                            client.send(inputLine);
-                        }
-                    }
+                	if (inputLine.startsWith("DRAW:")){ // 그리기일때
+	                    for (ClientHandler client : clients) {
+	                        if (client != this) {
+	                            client.send(inputLine);
+	                        }
+	                    }
+                	}
+                	else {
+                		System.out.println(inputLine);
+                   		
+                	}
                 }
             } catch (IOException e) {
                 System.out.println("Client disconnected: " + e.getMessage());
             } finally {
                 try {
+                	int index = clients.indexOf(this);
+                	System.out.println(index);
                     clients.remove(this);
                     clientSocket.close();
                 } catch (IOException e) {

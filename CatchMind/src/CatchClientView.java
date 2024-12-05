@@ -29,6 +29,7 @@ public class CatchClientView extends JFrame {
 	
     private JPanel contentPane;
     private String img_path;
+    private JLabel usernameLabel;
     private int people_num = 1; // 게임에 있는 사람 수
     
     //canvas
@@ -57,6 +58,9 @@ public class CatchClientView extends JFrame {
             
             new Thread(this::listenToServer).start();
             System.out.println(username + " connected");
+           
+            sendUserInfo(img_path, username);
+            
             
         } catch (NumberFormatException | IOException e) {
             e.printStackTrace();
@@ -66,28 +70,36 @@ public class CatchClientView extends JFrame {
     	port = port_no;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(250, 50, 1000, 750);
+//        contentPane = new JPanel();
+//        contentPane.setLayout(null);
+//        setContentPane(contentPane);
+        
+        // Use JLayeredPane
+        JLayeredPane layeredPane = new JLayeredPane();
+        layeredPane.setLayout(null); // Use null layout for absolute positioning
+        setContentPane(layeredPane);
+
+        // Main content panel
         contentPane = new JPanel();
+        contentPane.setBounds(0, 0, getWidth(), getHeight());
         contentPane.setLayout(null);
-        setContentPane(contentPane);
+        layeredPane.add(contentPane, Integer.valueOf(0)); // Add as base layer
 
         this.img_path = img_path;
-        ImageIcon characterImageIcon = new ImageIcon(img_path); /// 캐릭터 이미지 
-        Image img = characterImageIcon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);  //이미지 크기
-        JLabel characterImageLabel = new JLabel(new ImageIcon(img));
-        characterImageLabel.setBounds(30, 50, 100, 100);
-        contentPane.add(characterImageLabel);
-
- 
-        JLabel usernameLabel = new JLabel(username); // 닉네임 
-        usernameLabel.setFont(new Font("System", Font.BOLD, 20));
-        usernameLabel.setBounds(30, 150, 200, 30);
-        contentPane.add(usernameLabel);
-
-
-//        UserSquaresPanel userSquaresPanel = new UserSquaresPanel();
-//        userSquaresPanel.setBounds(50, 350, 900, 350); 
-//        contentPane.add(userSquaresPanel);
+        usernameLabel = new JLabel(username); // 닉네임 
         
+
+        //유저 공간
+        JPanel leftSquares = new UserSquaresPanel();
+        JPanel rightSquares = new UserSquaresPanel();
+        leftSquares.setPreferredSize(new Dimension(150, 500));
+        rightSquares.setPreferredSize(new Dimension(150, 500));
+        leftSquares.setBounds(20,100,150,500);
+        contentPane.add(leftSquares);
+        rightSquares.setBounds(800,100,150,500);
+        contentPane.add(rightSquares);
+       
+        //캔버스
         drawing = createDrawingPanel();
         drawing.setBounds(200, 100, 550, 500); 
         contentPane.add(drawing);
@@ -100,23 +112,16 @@ public class CatchClientView extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             g.setColor(Color.GRAY);
-            
-            if (people_num == 1) {
-            	g.fillRect(50, 0, 150, 100); // Square 1
-            	
-            	Image icon = new ImageIcon(img_path).getImage();
-            	//.getScaledInstance(100, 100, Image.SCALE_SMOOTH) //크기 
-            	g.drawImage(icon, 50,0 ,this);
+
+            // Draw the squares
+            int squareWidth = 150;
+            int squareHeight = 130;
+            int spacing = 50;
+
+            for (int i = 0; i < 2; i++) {
+                int y = i * (squareHeight + spacing);
+                g.fillRect(0, y, squareWidth, squareHeight);
             }
-            else if(people_num == 2) {
-            	g.fillRect(50, 200, 150, 100); // Square 2
-            }
-            else if(people_num == 3) {
-            	g.fillRect(500, 50, 150, 100); // Square 3
-            }
-            else if(people_num == 4) {
-            	g.fillRect(500, 200, 150, 100); // Square 4
-            }        
         }
     }
     
@@ -160,6 +165,8 @@ public class CatchClientView extends JFrame {
         Canvas_space.setBorder(new LineBorder(Color.black));
         Canvas_space.setLayout(new BorderLayout());
         Canvas_space.add(createcanvas, BorderLayout.CENTER);
+        
+
 
         // Color Buttons Area
         color_space = new JPanel();
@@ -198,12 +205,21 @@ public class CatchClientView extends JFrame {
         return panel;
     }
     
+    private void sendUserInfo (String img, String username) {
+    	try {
+			dos.writeUTF("users:" + img + " " + username);
+			dos.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }
    
     
     private void sendDrawCommand(int x1, int y1, int x2, int y2) {
         try {
         	String colorCode = Integer.toString(color.getRGB());
-            dos.writeUTF(x1 + " " + y1 + " " + x2 + " " + y2 + " " + colorCode);
+            dos.writeUTF("DRAW:" + x1 + " " + y1 + " " + x2 + " " + y2 + " " + colorCode);
             dos.flush();
         } catch (IOException e) {
             e.printStackTrace();
@@ -214,22 +230,72 @@ public class CatchClientView extends JFrame {
     private void listenToServer() {
         try (DataInputStream input = new DataInputStream(socket.getInputStream())) {
             while (true) {
-                String[] drawCommand = input.readUTF().split(" ");
-                int x1 = Integer.parseInt(drawCommand[0]);
-                int y1 = Integer.parseInt(drawCommand[1]);
-                int x2 = Integer.parseInt(drawCommand[2]);
-                int y2 = Integer.parseInt(drawCommand[3]);
-                Color receivedColor = new Color(Integer.parseInt(drawCommand[4]));
+            	String message = input.readUTF();
+            	if (message.startsWith("Your client number:")) {
+            		people_num = Integer.parseInt(message.split(":")[1].trim());
+                    System.out.println("You are client #" + people_num );
+                    //people_num을 매개변수로 주는 함수 -> 수에 따라 자리 배치 
+                    user_place(people_num);
+            	}
+            	if (message.startsWith("DRAW:")) {
+            		 String[] drawCommand = message.replace("DRAW:", "").split(" ");
+	                
+	                if (drawCommand.length == 5) {	               
+		            	int x1 = Integer.parseInt(drawCommand[0]);
+		                int y1 = Integer.parseInt(drawCommand[1]);
+		                int x2 = Integer.parseInt(drawCommand[2]);
+		                int y2 = Integer.parseInt(drawCommand[3]);
+		                Color receivedColor = new Color(Integer.parseInt(drawCommand[4]));
+		                
+		                SwingUtilities.invokeLater(() -> {
+		                    Graphics g = createcanvas.getGraphics();
+		                    g.setColor(receivedColor);
+		                    g.drawLine(x1, y1, x2, y2);
+		                    g.dispose();
+		                });
+	               }
+               
+                }
                 
-                //System.out.println(Integer.parseInt(drawCommand[4], 16));
-                SwingUtilities.invokeLater(() -> {
-                    Graphics g = createcanvas.getGraphics();
-                    g.setColor(receivedColor);
-                    g.drawLine(x1, y1, x2, y2);
-                });
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    
+    private void user_place(int ppl) {
+    	
+    		
+		// Add to layeredPane with proper Z-order
+	    JLayeredPane layeredPane = (JLayeredPane) getContentPane(); // Access the layered pane
+	    
+		ImageIcon characterImageIcon = new ImageIcon(img_path); /// 캐릭터 이미지 
+        Image img = characterImageIcon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);  //이미지 크기
+        JLabel characterImageLabel = new JLabel(new ImageIcon(img));
+            
+        usernameLabel.setFont(new Font("System", Font.BOLD, 20));
+        usernameLabel.setForeground(Color.white);
+        
+        if (ppl == 1) {
+            characterImageLabel.setBounds(50, 110, 90, 90);
+            usernameLabel.setBounds(30, 200, 150, 30);
+            }
+        else if(ppl == 2) {
+        	characterImageLabel.setBounds(50, 280, 90, 90);
+            usernameLabel.setBounds(30, 300, 150, 30);
+        }
+        else if(ppl == 3) {
+        	characterImageLabel.setBounds(30, 50, 100, 100);
+            usernameLabel.setBounds(30, 150, 200, 30);
+        }
+        else if(ppl == 4) {
+        	characterImageLabel.setBounds(30, 50, 100, 100);
+            usernameLabel.setBounds(30, 150, 200, 30);
+        }
+        
+            
+            layeredPane.add(characterImageLabel, Integer.valueOf(1)); // Add at higher layer
+    	    layeredPane.add(usernameLabel, Integer.valueOf(1));
+    	
     }
 }
