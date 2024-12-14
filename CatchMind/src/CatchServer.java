@@ -6,7 +6,8 @@ import java.util.concurrent.*;
 public class CatchServer {
     private final int port;
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private List<String> userInfo =  new ArrayList<String>();
+    private List<String> userInfo =  new ArrayList<String>(); //유저 정보 저장
+    private List<Integer> existing = new ArrayList<Integer>(); // 유저 인덱스 저장
 
     public CatchServer(int port) {
         this.port = port;
@@ -27,8 +28,6 @@ public class CatchServer {
             serverSocket.close();
         }
     }
-    
-   
 
     private class ClientHandler implements Runnable {
         private final Socket clientSocket;
@@ -42,29 +41,73 @@ public class CatchServer {
         public void run() {
             try (DataInputStream input = new DataInputStream(clientSocket.getInputStream())) {
                 String inputLine;
-                send("Your client number:" + clients.size());
+                
                 for (ClientHandler client : clients) {
-                	client.send(Integer.toString(clients.size()));
+                	client.send(Integer.toString(clients.size())); // 클라이언트 수 보냄
                 }
                 while ((inputLine = input.readUTF()) != null) {
-                	if (inputLine.startsWith("DRAW:")){ // 그리기일때
+                	if (inputLine.startsWith("DRAW:")){ // 그리기일때 -> 모두에게 그대로 보냄
 	                    for (ClientHandler client : clients) {
 	                        if (client != this) {
 	                            client.send(inputLine);
 	                        }
 	                    }
                 	}
-                	else {
-                		System.out.println(inputLine);
-                   		
+                	else if (inputLine.startsWith("users:")) // 유저 정보일때 -> 유저 번호와 함께 보냄
+                	{
+                		String user = Integer.toString(clients.size()-1) + " " + inputLine; 
+                		System.out.println(user);
+                		
+                		String info = inputLine.replace("users:", ""); // users: 빠지고 이미지 주소, 이름만 
+                		
+                		userInfo.add(info); // "이미지주소 이름" 추가
+                		
+                		int here = -1;
+                		boolean found = false;
+                		for(int i=0;i<4;i++) { // 0~3
+                			if (existing.size()== 0)
+                				here = 0;
+                			else {
+	                			if(existing.contains(i)) {
+	                				continue;
+	                			}
+                				else {
+                					here = i;
+                					found = true;
+                					break;
+                				}
+	                		}
+                			if (found) break; 
+                		}
+                		existing.add(here);// 유저 들어와있는 인덱스 (0~3)
+                		System.out.println(existing);
+                		
+                		send("Your client number:" + existing.get(clients.size()-1) );
+                		
+                		
+                		
+                		String ext = "";
+                		String users = "";
+                		for(int i=0;i<existing.size();i++) {
+                			ext = ext + existing.get(i) + " ";
+                			users = users + userInfo.get(i) + ",";
+                		}
+                		send("all userinfos:" + ext + "*" + users);
+                		
                 	}
                 }
             } catch (IOException e) {
-                System.out.println("Client disconnected: " + e.getMessage());
+                System.out.println("Client disconnected: " );
             } finally {
-                try {
-                	int index = clients.indexOf(this);
-                	System.out.println(index);
+                try { /// 유저 나갔을 때 
+                	int index = clients.indexOf(this); 
+                	// 이 인덱스에 있는 userinfo도 삭제
+                	userInfo.remove(index);
+                	existing.remove(index); 
+                	
+                	// 다른 유저들 한테도 이 인덱스의 유저가 나갔음을 알려야 함 -> 프로필 삭제
+                	
+                	System.out.println(index+"ajhdfkjhs");
                     clients.remove(this);
                     clientSocket.close();
                 } catch (IOException e) {

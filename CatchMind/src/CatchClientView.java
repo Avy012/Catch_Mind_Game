@@ -22,14 +22,9 @@ public class CatchClientView extends JFrame {
     private OutputStream os;
     private DataInputStream dis;
     private DataOutputStream dos;
-    private JLabel lblUserName;
-    private String ip_addr ;
-    private String port;
 
 	
     private JPanel contentPane;
-    private String img_path;
-    private JLabel usernameLabel;
     private int people_num = 1; // 게임에 있는 사람 수
     
     //canvas
@@ -46,6 +41,10 @@ public class CatchClientView extends JFrame {
     private JPanel color_space, Canvas_space;
     private JButton Red_button, Blue_button, Green_button, Yellow_button, Black_button, Clear_button;
 
+    
+    private CatchMindTimer catchmindtimer;
+    private QuizWord Quizmanager;
+
 
     public CatchClientView(String username, String ip_addr, String port_no, String img_path) {
     	
@@ -59,15 +58,13 @@ public class CatchClientView extends JFrame {
             new Thread(this::listenToServer).start();
             System.out.println(username + " connected");
            
-            sendUserInfo(img_path, username);
+            sendUserInfo(img_path, username); // users: 하고 유저 정보 보냄
             
             
         } catch (NumberFormatException | IOException e) {
             e.printStackTrace();
         }
     	
-    	this.ip_addr = ip_addr;
-    	port = port_no;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(250, 50, 1000, 750);
 //        contentPane = new JPanel();
@@ -85,8 +82,6 @@ public class CatchClientView extends JFrame {
         contentPane.setLayout(null);
         layeredPane.add(contentPane, Integer.valueOf(0)); // Add as base layer
 
-        this.img_path = img_path;
-        usernameLabel = new JLabel(username); // 닉네임 
         
 
         //유저 공간
@@ -113,7 +108,7 @@ public class CatchClientView extends JFrame {
             super.paintComponent(g);
             g.setColor(Color.GRAY);
 
-            // Draw the squares
+            // 유저 창
             int squareWidth = 150;
             int squareHeight = 130;
             int spacing = 50;
@@ -128,8 +123,11 @@ public class CatchClientView extends JFrame {
     private JPanel createDrawingPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
+        
+        
+        
 
-        // Canvas Area
+        // 그림 창
         createcanvas = new Canvas();
         createcanvas.setBackground(Color.WHITE);
         createcanvas.setPreferredSize(new Dimension(600, 1000));
@@ -197,10 +195,47 @@ public class CatchClientView extends JFrame {
         	g.setColor(Color.WHITE); 
             g.fillRect(0, 0, getWidth(), getHeight());
             g.dispose(); 
+            Quizmanager.setRandomword(); ///테스트용
         });
 
         panel.add(Canvas_space, BorderLayout.CENTER);
         panel.add(color_space, BorderLayout.SOUTH);
+        
+        JLabel timerLabel, quizLabel;
+        
+        // 타이머 레이블 추가
+        timerLabel = new JLabel("", SwingConstants.CENTER);
+        timerLabel.setBounds(50, 10, 250, 30);
+        timerLabel.setFont(new Font("System", Font.BOLD, 20));
+        timerLabel.setBorder(new LineBorder(Color.black));
+        contentPane.add(timerLabel);
+
+        // 제시어 레이블 추가
+        quizLabel = new JLabel("", SwingConstants.CENTER);
+        quizLabel.setBounds(675, 10, 250, 30);
+        quizLabel.setFont(new Font("System", Font.BOLD, 20));
+        quizLabel.setBorder(new LineBorder(Color.black));
+        contentPane.add(quizLabel);
+        
+        Quizmanager = new QuizWord(quizLabel);  
+
+        // 타이머 설정
+        catchmindtimer = new CatchMindTimer(timerLabel, 60, () -> {
+            JOptionPane.showMessageDialog(Canvas_space, "게임 종료");
+            catchmindtimer.reset(60);
+            Quizmanager.setRandomword(); // 새로운 제시
+            
+            Graphics g = createcanvas.getGraphics();
+        	g.setColor(Color.WHITE); 
+            g.fillRect(0, 0, getWidth(), getHeight());
+            g.dispose();
+            
+        });
+
+        catchmindtimer.start(); // 타이머 시작
+
+        // 초기 제시어 설정
+        Quizmanager.setRandomword();
 
         return panel;
     }
@@ -231,13 +266,18 @@ public class CatchClientView extends JFrame {
         try (DataInputStream input = new DataInputStream(socket.getInputStream())) {
             while (true) {
             	String message = input.readUTF();
-            	if (message.startsWith("Your client number:")) {
+            	if (message.startsWith("Your client number:")) { /// 내 유저 프로필 그리기
             		people_num = Integer.parseInt(message.split(":")[1].trim());
                     System.out.println("You are client #" + people_num );
-                    //people_num을 매개변수로 주는 함수 -> 수에 따라 자리 배치 
-                    user_place(people_num);
+                    
+                    if(people_num < 0) { // 4명 꽉 찼을 때 
+                    	JOptionPane.showMessageDialog(Canvas_space, "인원이 다 찼습니다");
+                    	System.exit(0); // 프로그램 종료
+                    }
+                    
             	}
-            	if (message.startsWith("DRAW:")) {
+            	
+            	if (message.startsWith("DRAW:")) { /////////그리기
             		 String[] drawCommand = message.replace("DRAW:", "").split(" ");
 	                
 	                if (drawCommand.length == 5) {	               
@@ -256,6 +296,22 @@ public class CatchClientView extends JFrame {
 	               }
                
                 }
+            	
+            	if (message.startsWith("all userinfos:")) {
+            		String[] msg = message.replace("all userinfos:", "").split("\\*"); // info랑 index 나눔
+            		String[] index = msg[0].split(" ");
+            		String[] info = msg[1].split(",");
+            		
+            		for (int i=0;i<index.length;i++) {
+            			String[] both = info[i].split(" "); // both[0] -> pic, both[1] -> name
+            			
+                		// 각 유저 프로필 그림
+                		user_place(Integer.parseInt(index[i]), both[0], both[1]);
+            		}
+            		
+            	}
+            	
+            	
                 
             }
         } catch (IOException e) {
@@ -263,37 +319,37 @@ public class CatchClientView extends JFrame {
         }
     }
     
-    private void user_place(int ppl) {
+    private void user_place(int ppl, String pic, String name) {//매개변수로 자리, 정보 받아서 배치
     	
-    		
-		// Add to layeredPane with proper Z-order
-	    JLayeredPane layeredPane = (JLayeredPane) getContentPane(); // Access the layered pane
+	    JLayeredPane layeredPane = (JLayeredPane) getContentPane(); 
 	    
-		ImageIcon characterImageIcon = new ImageIcon(img_path); /// 캐릭터 이미지 
+		ImageIcon characterImageIcon = new ImageIcon(pic); /// 캐릭터 이미지 
         Image img = characterImageIcon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);  //이미지 크기
         JLabel characterImageLabel = new JLabel(new ImageIcon(img));
             
+        JLabel usernameLabel = new JLabel(name);
+        usernameLabel.setText(name);
         usernameLabel.setFont(new Font("System", Font.BOLD, 20));
         usernameLabel.setForeground(Color.white);
         
-        if (ppl == 1) {
+        //받은 0,1 배열 통해서 비어있는 작은 수 인덱스부터 채워넣기
+        
+        if (ppl == 0) {
             characterImageLabel.setBounds(50, 110, 90, 90);
             usernameLabel.setBounds(30, 200, 150, 30);
             }
+        else if(ppl ==1) {
+        	characterImageLabel.setBounds(50, 290, 90, 90);
+            usernameLabel.setBounds(30, 380, 150, 30);
+        }
         else if(ppl == 2) {
-        	characterImageLabel.setBounds(50, 280, 90, 90);
-            usernameLabel.setBounds(30, 300, 150, 30);
+        	characterImageLabel.setBounds(820, 110, 90, 90);
+            usernameLabel.setBounds(810, 200, 150, 30);
         }
         else if(ppl == 3) {
-        	characterImageLabel.setBounds(30, 50, 100, 100);
-            usernameLabel.setBounds(30, 150, 200, 30);
+        	characterImageLabel.setBounds(820, 290, 90, 90);
+            usernameLabel.setBounds(810, 380, 150, 30);
         }
-        else if(ppl == 4) {
-        	characterImageLabel.setBounds(30, 50, 100, 100);
-            usernameLabel.setBounds(30, 150, 200, 30);
-        }
-        
-            
             layeredPane.add(characterImageLabel, Integer.valueOf(1)); // Add at higher layer
     	    layeredPane.add(usernameLabel, Integer.valueOf(1));
     	
