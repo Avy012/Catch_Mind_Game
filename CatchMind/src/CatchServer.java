@@ -3,12 +3,16 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import javax.swing.Timer;
+
 public class CatchServer {
     private final int port;
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private List<String> userInfo =  new ArrayList<String>(); //유저 정보 저장
     private List<Integer> existing = new ArrayList<Integer>(); // 유저 인덱스 저장
     private String quizcorrect=null;
+    private Timer timer;
+    private int timeRemaining;
     
     public CatchServer(int port) {
         this.port = port;
@@ -115,6 +119,11 @@ public class CatchServer {
 	                        }
 	                    }
                 	}
+                	else if (inputLine.startsWith("start")) {
+                		/// 타이머 시작 + 타이머 시간 모두에게 보냄
+                		
+                	}
+                	
                 }
             } catch (IOException e) {
                 System.out.println("Client disconnected: " );

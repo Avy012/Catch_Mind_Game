@@ -45,12 +45,13 @@ public class CatchMindTimer {
     public void reset(int newTime) {
         stop();
         timeRemaining = newTime;
-        updateTimerLabel();
+        //updateTimerLabel();
         start();
     }
 
     // 남은 시간 업데이트
-    private void updateTimerLabel() {
-        timerLabel.setText("남은 시간: " + timeRemaining + "초");
+    private int updateTimerLabel() {
+        //timerLabel.setText("남은 시간: " + timeRemaining + "초");
+    	return timeRemaining;
     }
 }

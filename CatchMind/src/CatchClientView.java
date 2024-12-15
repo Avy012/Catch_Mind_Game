@@ -279,6 +279,13 @@ public class CatchClientView extends JFrame {
     	System.out.println("정답보내기");
     	sendCorrect();
     	Quizmake.setEnabled(false);
+    	try {
+			dos.writeUTF("start");
+			dos.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+        
     }
     
     private void sendDrawCommand(int x1, int y1, int x2, int y2) {
