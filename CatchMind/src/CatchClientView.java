@@ -14,7 +14,7 @@ import javax.swing.border.LineBorder;
 public class CatchClientView extends JFrame {
     private JTextField txtInput;
     private String UserName;
-    private JButton btnSend;
+    private JButton btnSend, Quizmake;
     private JTextArea textArea;
     private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
     private Socket socket; // 연결소켓
@@ -25,13 +25,14 @@ public class CatchClientView extends JFrame {
     private JLabel lblUserName;
     private String ip_addr ;
     private String port;
-
-	
+    private QuizWord Quizmanager;
+    private JLabel timerLabel, quizLabel;
     private JPanel contentPane;
     private String img_path;
     private JLabel usernameLabel;
     private int people_num = 1; // 게임에 있는 사람 수
-    
+    private int QuizOk = 1;
+    private String correct;
     //canvas
     private JPanel drawing;
     private Canvas createcanvas;
@@ -84,11 +85,10 @@ public class CatchClientView extends JFrame {
         contentPane.setBounds(0, 0, getWidth(), getHeight());
         contentPane.setLayout(null);
         layeredPane.add(contentPane, Integer.valueOf(0)); // Add as base layer
-
+        
         this.img_path = img_path;
         usernameLabel = new JLabel(username); // 닉네임 
-        
-
+        UserName=username;
         //유저 공간
         JPanel leftSquares = new UserSquaresPanel();
         JPanel rightSquares = new UserSquaresPanel();
@@ -103,8 +103,35 @@ public class CatchClientView extends JFrame {
         drawing = createDrawingPanel();
         drawing.setBounds(200, 100, 550, 500); 
         contentPane.add(drawing);
-        
-        
+        //채팅
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setBounds(200, 610, 550, 45);
+		contentPane.add(scrollPane);
+
+		textArea = new JTextArea();
+		textArea.setEditable(false);
+		scrollPane.setViewportView(textArea);
+        //채팅 입력
+		txtInput = new JTextField();
+        txtInput.setBounds(200, 660, 550, 30);
+		contentPane.add(txtInput);
+		txtInput.setColumns(10);
+        // 채팅 전송 버튼
+        btnSend = new JButton("전송");
+        btnSend.setBounds(880, 660, 70, 30);
+        btnSend.addActionListener(e -> sendMessage());
+        contentPane.add(btnSend);
+        // 퀴즈 단어
+        quizLabel = new JLabel("", SwingConstants.CENTER);
+        quizLabel.setBounds(675, 10, 250, 30);
+        quizLabel.setFont(new Font("System", Font.BOLD, 20));
+        quizLabel.setBorder(new LineBorder(Color.black));
+        contentPane.add(quizLabel);
+        Quizmanager = new QuizWord(quizLabel);
+        Quizmake = new JButton("시작");
+        Quizmake.setBounds(880, 600, 70, 30);
+        Quizmake.addActionListener(e -> Quizgenerate());
+        contentPane.add(Quizmake);
     }
 
     class UserSquaresPanel extends JPanel {
@@ -137,16 +164,18 @@ public class CatchClientView extends JFrame {
         createcanvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                int x = e.getX();
-                int y = e.getY();
-                if (lastX != -1 && lastY != -1) {
-                	Graphics g = createcanvas.getGraphics();
-                	g.setColor(color);
-                    g.drawLine(lastX, lastY, x, y);
-                    sendDrawCommand(lastX, lastY, x, y);
-                }
-                lastX = x;
-                lastY = y;
+            	if(QuizOk==0) {
+            		int x = e.getX();
+                	int y = e.getY();
+                	if (lastX != -1 && lastY != -1) {
+                		Graphics g = createcanvas.getGraphics();
+                		g.setColor(color);
+                    	g.drawLine(lastX, lastY, x, y);
+                    	sendDrawCommand(lastX, lastY, x, y);
+                	}
+                	lastX = x;
+                	lastY = y;
+            	}
             }
         });
 
@@ -214,9 +243,17 @@ public class CatchClientView extends JFrame {
 			e.printStackTrace();
 		}
     }
-   
+    private void Quizgenerate() {
+    	correct=Quizmanager.setRandomword(correct);
+    	System.out.println("정답보내기");
+    	sendCorrect();
+    	Quizmake.setEnabled(false);
+    }
     
     private void sendDrawCommand(int x1, int y1, int x2, int y2) {
+    	if (QuizOk != 0) {
+            return;
+        }
         try {
         	String colorCode = Integer.toString(color.getRGB());
             dos.writeUTF("DRAW:" + x1 + " " + y1 + " " + x2 + " " + y2 + " " + colorCode);
@@ -225,8 +262,47 @@ public class CatchClientView extends JFrame {
             e.printStackTrace();
         }
     }
-    
-
+    private void sendMessage() {
+    	if(correct.equals(txtInput.getText())&& QuizOk!=0) {
+    		correct=Quizmanager.setRandomword(correct);
+    		System.out.println("정답보내기");
+    		sendCorrect();
+    		Graphics g = createcanvas.getGraphics();
+        	g.setColor(Color.WHITE); 
+            g.fillRect(0, 0, getWidth(), getHeight());
+            g.dispose(); 
+    	}
+        String msg = String.format("CHAT: [%s] %s\n", UserName, txtInput.getText());
+        String chatMessage = msg.replace("CHAT:", "");
+        textArea.append(chatMessage);
+        SendMessage(msg);
+        txtInput.setText(""); // 메세지 입력창을 비운다
+        txtInput.requestFocus(); // 텍스트 필드로 커서를 다시 위치시킨다
+        if (msg.contains("/exit")) { // 종료 처리
+            System.exit(0);
+        }
+    }
+    private void sendCorrect() {
+    	btnSend.setEnabled(false);
+    	QuizOk=0;
+        String msg = String.format("CORRECT:"+ correct);
+        SendMessage(msg);
+    }
+    public void SendMessage(String msg) {
+        try {
+            // Use writeUTF to send messages
+            dos.writeUTF(msg);
+        } catch (IOException e) {
+            try {
+                dos.close();
+                dis.close();
+                socket.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+                System.exit(0);
+            }
+        }
+    }
     private void listenToServer() {
         try (DataInputStream input = new DataInputStream(socket.getInputStream())) {
             while (true) {
@@ -237,6 +313,22 @@ public class CatchClientView extends JFrame {
                     //people_num을 매개변수로 주는 함수 -> 수에 따라 자리 배치 
                     user_place(people_num);
             	}
+            	
+            	if (message.startsWith("CORRECT:")) {
+            		if(btnSend!=null)
+            			btnSend.setEnabled(true);
+                    String Message = message.replace("CORRECT:", "");
+                    correct=Message;
+                    if(Quizmanager!=null) {
+                    	Quizmake.setEnabled(false);
+                    	Graphics g = createcanvas.getGraphics();
+                    	g.setColor(Color.WHITE); 
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                        g.dispose(); 
+                    	Quizmanager.blindword();
+                    	QuizOk=1;
+                    }
+                }
             	if (message.startsWith("DRAW:")) {
             		 String[] drawCommand = message.replace("DRAW:", "").split(" ");
 	                
@@ -255,6 +347,10 @@ public class CatchClientView extends JFrame {
 		                });
 	               }
                
+                }
+            	if (message.startsWith("CHAT:")) {
+                    String chatMessage = message.replace("CHAT:", "");
+                    textArea.append(chatMessage);
                 }
                 
             }
@@ -281,16 +377,16 @@ public class CatchClientView extends JFrame {
             usernameLabel.setBounds(30, 200, 150, 30);
             }
         else if(ppl == 2) {
-        	characterImageLabel.setBounds(50, 280, 90, 90);
-            usernameLabel.setBounds(30, 300, 150, 30);
+        	characterImageLabel.setBounds(50, 290, 90, 90);
+            usernameLabel.setBounds(30, 380, 150, 30);
         }
         else if(ppl == 3) {
-        	characterImageLabel.setBounds(30, 50, 100, 100);
-            usernameLabel.setBounds(30, 150, 200, 30);
+        	characterImageLabel.setBounds(830, 110, 90, 90);
+            usernameLabel.setBounds(810, 200, 150, 30);
         }
         else if(ppl == 4) {
-        	characterImageLabel.setBounds(30, 50, 100, 100);
-            usernameLabel.setBounds(30, 150, 200, 30);
+        	characterImageLabel.setBounds(830, 290, 90, 90);
+            usernameLabel.setBounds(810, 380, 150, 30);
         }
         
             

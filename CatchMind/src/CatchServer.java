@@ -7,7 +7,7 @@ public class CatchServer {
     private final int port;
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private List<String> userInfo =  new ArrayList<String>();
-
+    private String quizcorrect=null;
     public CatchServer(int port) {
         this.port = port;
     }
@@ -43,12 +43,29 @@ public class CatchServer {
             try (DataInputStream input = new DataInputStream(clientSocket.getInputStream())) {
                 String inputLine;
                 send("Your client number:" + clients.size());
+                if(quizcorrect!=null)
+                	send("CORRECT:"+quizcorrect);
                 for (ClientHandler client : clients) {
                 	client.send(Integer.toString(clients.size()));
                 }
                 while ((inputLine = input.readUTF()) != null) {
                 	if (inputLine.startsWith("DRAW:")){ // 그리기일때
 	                    for (ClientHandler client : clients) {
+	                        if (client != this) {
+	                            client.send(inputLine);
+	                        }
+	                    }
+                	}
+                	else if (inputLine.startsWith("CHAT:")){ // 채팅일때
+	                    for (ClientHandler client : clients) {
+	                        if (client != this) {
+	                            client.send(inputLine);
+	                        }
+	                    }
+                	}
+                	else if (inputLine.startsWith("CORRECT:")){ // 정답세팅
+                		quizcorrect = inputLine.replace("CORRECT:", "");
+                		for (ClientHandler client : clients) {
 	                        if (client != this) {
 	                            client.send(inputLine);
 	                        }
