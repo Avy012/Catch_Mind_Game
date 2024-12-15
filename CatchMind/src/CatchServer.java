@@ -8,7 +8,8 @@ public class CatchServer {
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private List<String> userInfo =  new ArrayList<String>(); //유저 정보 저장
     private List<Integer> existing = new ArrayList<Integer>(); // 유저 인덱스 저장
-
+    private String quizcorrect=null;
+    
     public CatchServer(int port) {
         this.port = port;
     }
@@ -92,8 +93,27 @@ public class CatchServer {
                 			ext = ext + existing.get(i) + " ";
                 			users = users + userInfo.get(i) + ",";
                 		}
-                		send("all userinfos:" + ext + "*" + users);
+                		for (ClientHandler client : clients) {
+                			client.send("all userinfos:" + ext + "*" + users);
+	                    }
                 		
+                		
+                		
+                	}
+                	else if (inputLine.startsWith("CHAT:")){ // 채팅일때
+	                    for (ClientHandler client : clients) {
+	                        if (client != this) {
+	                            client.send(inputLine);
+	                        }
+	                    }
+                	}
+                	else if (inputLine.startsWith("CORRECT:")){ // 정답세팅
+                		quizcorrect = inputLine.replace("CORRECT:", "");
+                		for (ClientHandler client : clients) {
+	                        if (client != this) {
+	                            client.send(inputLine);
+	                        }
+	                    }
                 	}
                 }
             } catch (IOException e) {
@@ -105,10 +125,21 @@ public class CatchServer {
                 	userInfo.remove(index);
                 	existing.remove(index); 
                 	
-                	// 다른 유저들 한테도 이 인덱스의 유저가 나갔음을 알려야 함 -> 프로필 삭제
                 	
-                	System.out.println(index+"ajhdfkjhs");
-                    clients.remove(this);
+                	// 다른 유저들 한테도 이 인덱스의 유저가 나갔음을 알려야 함 -> 프로필 삭제
+                	String ext = "";
+            		String users = "";
+            		for(int i=0;i<existing.size();i++) {
+            			ext = ext + existing.get(i) + " ";
+            			users = users + userInfo.get(i) + ",";
+            		}
+            		for (ClientHandler client : clients) {
+                        if (client != this) {
+                        	client.send("all userinfos:" + ext + "*" + users);
+                        }
+                    }
+                	
+            		clients.remove(this);
                     clientSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();

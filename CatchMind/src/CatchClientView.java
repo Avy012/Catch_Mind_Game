@@ -14,7 +14,6 @@ import javax.swing.border.LineBorder;
 public class CatchClientView extends JFrame {
     private JTextField txtInput;
     private String UserName;
-    private JButton btnSend;
     private JTextArea textArea;
     private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
     private Socket socket; // 연결소켓
@@ -26,10 +25,14 @@ public class CatchClientView extends JFrame {
 	
     private JPanel contentPane;
     private int people_num = 1; // 게임에 있는 사람 수
+    private String[] names = {"","","",""};
+    private String[] pics = {"","","",""};
+    
     
     //canvas
     private JPanel drawing;
     private Canvas createcanvas;
+    private JPanel userpanel;
     //  pen
     private int lastX = -1, lastY = -1;
     private Color color = Color.black;
@@ -44,6 +47,10 @@ public class CatchClientView extends JFrame {
     
     private CatchMindTimer catchmindtimer;
     private QuizWord Quizmanager;
+    private JLabel timerLabel, quizLabel;
+    private int QuizOk = 1;
+    private String correct;
+    private JButton btnSend, Quizmake;
 
 
     public CatchClientView(String username, String ip_addr, String port_no, String img_path) {
@@ -67,16 +74,11 @@ public class CatchClientView extends JFrame {
     	
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(250, 50, 1000, 750);
-//        contentPane = new JPanel();
-//        contentPane.setLayout(null);
-//        setContentPane(contentPane);
         
-        // Use JLayeredPane
         JLayeredPane layeredPane = new JLayeredPane();
-        layeredPane.setLayout(null); // Use null layout for absolute positioning
+        layeredPane.setLayout(null); 
         setContentPane(layeredPane);
 
-        // Main content panel
         contentPane = new JPanel();
         contentPane.setBounds(0, 0, getWidth(), getHeight());
         contentPane.setLayout(null);
@@ -84,21 +86,48 @@ public class CatchClientView extends JFrame {
 
         
 
-        //유저 공간
-        JPanel leftSquares = new UserSquaresPanel();
-        JPanel rightSquares = new UserSquaresPanel();
-        leftSquares.setPreferredSize(new Dimension(150, 500));
-        rightSquares.setPreferredSize(new Dimension(150, 500));
-        leftSquares.setBounds(20,100,150,500);
-        contentPane.add(leftSquares);
-        rightSquares.setBounds(800,100,150,500);
-        contentPane.add(rightSquares);
+        
        
         //캔버스
         drawing = createDrawingPanel();
         drawing.setBounds(200, 100, 550, 500); 
         contentPane.add(drawing);
         
+        //채팅
+  		JScrollPane scrollPane = new JScrollPane();
+  		scrollPane.setBounds(200, 610, 550, 45);
+  		contentPane.add(scrollPane);
+
+  		textArea = new JTextArea();
+  		textArea.setEditable(false);
+  		scrollPane.setViewportView(textArea);
+          //채팅 입력
+  		txtInput = new JTextField();
+        txtInput.setBounds(200, 660, 550, 30);
+  		contentPane.add(txtInput);
+  		txtInput.setColumns(10);
+	    // 채팅 전송 버튼
+	    btnSend = new JButton("전송");
+	    btnSend.setBounds(880, 660, 70, 30);
+	    btnSend.addActionListener(e -> sendMessage());
+	    contentPane.add(btnSend);
+	    // 퀴즈 단어
+	    quizLabel = new JLabel("", SwingConstants.CENTER);
+	    quizLabel.setBounds(675, 10, 250, 30);
+	    quizLabel.setFont(new Font("System", Font.BOLD, 20));
+	    quizLabel.setBorder(new LineBorder(Color.black));
+	    contentPane.add(quizLabel);
+	    Quizmanager = new QuizWord(quizLabel);
+	    Quizmake = new JButton("시작");
+	    Quizmake.setBounds(880, 600, 70, 30);
+	    Quizmake.addActionListener(e -> Quizgenerate());
+	    contentPane.add(Quizmake);
+        
+	    userpanel = new JPanel(); // Initialize userpanel
+	    userpanel.setLayout(null); // Set layout manager (if required)
+	    userpanel.setBounds(0, 0, getWidth(), getHeight()); // Adjust bounds as necessary
+	    userpanel.setOpaque(false); // Make transparent if necessary
+	    contentPane.add(userpanel);
         
     }
 
@@ -123,9 +152,6 @@ public class CatchClientView extends JFrame {
     private JPanel createDrawingPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
-        
-        
-        
 
         // 그림 창
         createcanvas = new Canvas();
@@ -195,7 +221,6 @@ public class CatchClientView extends JFrame {
         	g.setColor(Color.WHITE); 
             g.fillRect(0, 0, getWidth(), getHeight());
             g.dispose(); 
-            Quizmanager.setRandomword(); ///테스트용
         });
 
         panel.add(Canvas_space, BorderLayout.CENTER);
@@ -223,8 +248,8 @@ public class CatchClientView extends JFrame {
         catchmindtimer = new CatchMindTimer(timerLabel, 60, () -> {
             JOptionPane.showMessageDialog(Canvas_space, "게임 종료");
             catchmindtimer.reset(60);
-            Quizmanager.setRandomword(); // 새로운 제시
             
+            // 캔버스 초기화
             Graphics g = createcanvas.getGraphics();
         	g.setColor(Color.WHITE); 
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -234,8 +259,7 @@ public class CatchClientView extends JFrame {
 
         catchmindtimer.start(); // 타이머 시작
 
-        // 초기 제시어 설정
-        Quizmanager.setRandomword();
+        
 
         return panel;
     }
@@ -249,7 +273,13 @@ public class CatchClientView extends JFrame {
 			e.printStackTrace();
 		}
     }
-   
+    
+    private void Quizgenerate() {
+    	correct=Quizmanager.setRandomword(correct);
+    	System.out.println("정답보내기");
+    	sendCorrect();
+    	Quizmake.setEnabled(false);
+    }
     
     private void sendDrawCommand(int x1, int y1, int x2, int y2) {
         try {
@@ -258,6 +288,50 @@ public class CatchClientView extends JFrame {
             dos.flush();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+    
+    private void sendCorrect() {
+    	btnSend.setEnabled(false);
+    	QuizOk=0;
+        String msg = String.format("CORRECT:"+ correct);
+        SendMessage(msg);
+    }
+    
+    private void sendMessage() {
+    	if(correct.equals(txtInput.getText())&& QuizOk!=0) {
+    		correct=Quizmanager.setRandomword(correct);
+    		System.out.println("정답보내기");
+    		sendCorrect();
+    		Graphics g = createcanvas.getGraphics();
+        	g.setColor(Color.WHITE); 
+            g.fillRect(0, 0, getWidth(), getHeight());
+            g.dispose(); 
+    	}
+        String msg = String.format("CHAT: [%s] %s\n", UserName, txtInput.getText());
+        String chatMessage = msg.replace("CHAT:", "");
+        textArea.append(chatMessage);
+        SendMessage(msg);
+        txtInput.setText(""); // 메세지 입력창을 비운다
+        txtInput.requestFocus(); // 텍스트 필드로 커서를 다시 위치시킨다
+        if (msg.contains("/exit")) { // 종료 처리
+            System.exit(0);
+        }
+    }
+    
+    public void SendMessage(String msg) {
+        try {
+            // Use writeUTF to send messages
+            dos.writeUTF(msg);
+        } catch (IOException e) {
+            try {
+                dos.close();
+                dis.close();
+                socket.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+                System.exit(0);
+            }
         }
     }
     
@@ -276,6 +350,21 @@ public class CatchClientView extends JFrame {
                     }
                     
             	}
+            	if (message.startsWith("CORRECT:")) {
+            		if(btnSend!=null)
+            			btnSend.setEnabled(true);
+                    String Message = message.replace("CORRECT:", "");
+                    correct=Message;
+                    if(Quizmanager!=null) {
+                    	Quizmake.setEnabled(false);
+                    	Graphics g = createcanvas.getGraphics();
+                    	g.setColor(Color.WHITE); 
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                        g.dispose(); 
+                    	Quizmanager.blindword();
+                    	QuizOk=1;
+                    }
+                }
             	
             	if (message.startsWith("DRAW:")) { /////////그리기
             		 String[] drawCommand = message.replace("DRAW:", "").split(" ");
@@ -297,20 +386,39 @@ public class CatchClientView extends JFrame {
                
                 }
             	
-            	if (message.startsWith("all userinfos:")) {
+            	if (message.startsWith("all userinfos:")) { 
             		String[] msg = message.replace("all userinfos:", "").split("\\*"); // info랑 index 나눔
             		String[] index = msg[0].split(" ");
             		String[] info = msg[1].split(",");
             		
+            		for (int i=0;i<4;i++) {
+            			names[i] = "";
+            			pics[i] = "";
+            		}
+            		
+            		//유저 공간
+                    JPanel leftSquares = new UserSquaresPanel();
+                    JPanel rightSquares = new UserSquaresPanel();
+                    leftSquares.setPreferredSize(new Dimension(150, 500));
+                    rightSquares.setPreferredSize(new Dimension(150, 500));
+                    leftSquares.setBounds(20,100,150,500);
+                    contentPane.add(leftSquares);
+                    rightSquares.setBounds(800,100,150,500);
+                    contentPane.add(rightSquares);
+
+            	    
+                    
             		for (int i=0;i<index.length;i++) {
             			String[] both = info[i].split(" "); // both[0] -> pic, both[1] -> name
-            			
                 		// 각 유저 프로필 그림
                 		user_place(Integer.parseInt(index[i]), both[0], both[1]);
             		}
-            		
             	}
             	
+            	if (message.startsWith("CHAT:")) {
+                    String chatMessage = message.replace("CHAT:", "");
+                    textArea.append(chatMessage);
+                }
             	
                 
             }
@@ -321,7 +429,7 @@ public class CatchClientView extends JFrame {
     
     private void user_place(int ppl, String pic, String name) {//매개변수로 자리, 정보 받아서 배치
     	
-	    JLayeredPane layeredPane = (JLayeredPane) getContentPane(); 
+	    JLayeredPane layeredPane = (JLayeredPane) getContentPane();
 	    
 		ImageIcon characterImageIcon = new ImageIcon(pic); /// 캐릭터 이미지 
         Image img = characterImageIcon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);  //이미지 크기
@@ -350,8 +458,7 @@ public class CatchClientView extends JFrame {
         	characterImageLabel.setBounds(820, 290, 90, 90);
             usernameLabel.setBounds(810, 380, 150, 30);
         }
-            layeredPane.add(characterImageLabel, Integer.valueOf(1)); // Add at higher layer
-    	    layeredPane.add(usernameLabel, Integer.valueOf(1));
-    	
+        layeredPane.add(characterImageLabel, Integer.valueOf(2)); 
+        layeredPane.add(usernameLabel, Integer.valueOf(2)); 
     }
 }
