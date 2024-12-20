@@ -5,6 +5,8 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -45,12 +47,14 @@ public class CatchClientView extends JFrame {
     private JButton Red_button, Blue_button, Green_button, Yellow_button, Black_button, Clear_button;
 
     
-    private CatchMindTimer catchmindtimer;
     private QuizWord Quizmanager;
     private JLabel timerLabel, quizLabel;
     private int QuizOk = 1;
     private String correct;
     private JButton btnSend, Quizmake;
+    private int myScore = 0; // 현재 플레이어의 점수
+    private Map<String, Integer> playerScores = new HashMap<>();
+    private JLabel scoreLabel;
 
 
     public CatchClientView(String username, String ip_addr, String port_no, String img_path) {
@@ -84,7 +88,7 @@ public class CatchClientView extends JFrame {
         contentPane.setLayout(null);
         layeredPane.add(contentPane, Integer.valueOf(0)); // Add as base layer
 
-        
+        UserName = username;
 
         
        
@@ -122,12 +126,21 @@ public class CatchClientView extends JFrame {
 	    Quizmake.setBounds(880, 600, 70, 30);
 	    Quizmake.addActionListener(e -> Quizgenerate());
 	    contentPane.add(Quizmake);
+	    
+	    timerLabel = new JLabel("", SwingConstants.CENTER);
+        timerLabel.setBounds(50, 10, 250, 30);
+        timerLabel.setFont(new Font("System", Font.BOLD, 20));
+        timerLabel.setBorder(new LineBorder(Color.black));
+        contentPane.add(timerLabel);
         
 	    userpanel = new JPanel(); // Initialize userpanel
 	    userpanel.setLayout(null); // Set layout manager (if required)
 	    userpanel.setBounds(0, 0, getWidth(), getHeight()); // Adjust bounds as necessary
 	    userpanel.setOpaque(false); // Make transparent if necessary
 	    contentPane.add(userpanel);
+	    
+	    initializeScorePanel();
+	    
         
     }
 
@@ -148,6 +161,7 @@ public class CatchClientView extends JFrame {
             }
         }
     }
+    
     
     private JPanel createDrawingPanel() {
         JPanel panel = new JPanel();
@@ -244,20 +258,7 @@ public class CatchClientView extends JFrame {
         
         Quizmanager = new QuizWord(quizLabel);  
 
-        // 타이머 설정
-        catchmindtimer = new CatchMindTimer(timerLabel, 60, () -> {
-            JOptionPane.showMessageDialog(Canvas_space, "게임 종료");
-            catchmindtimer.reset(60);
-            
-            // 캔버스 초기화
-            Graphics g = createcanvas.getGraphics();
-        	g.setColor(Color.WHITE); 
-            g.fillRect(0, 0, getWidth(), getHeight());
-            g.dispose();
-            
-        });
-
-        catchmindtimer.start(); // 타이머 시작
+        
 
         
 
@@ -277,6 +278,7 @@ public class CatchClientView extends JFrame {
     private void Quizgenerate() {
     	correct=Quizmanager.setRandomword(correct);
     	System.out.println("정답보내기");
+    	myScore -= 1;
     	sendCorrect();
     	Quizmake.setEnabled(false);
     	try {
@@ -301,6 +303,8 @@ public class CatchClientView extends JFrame {
     private void sendCorrect() {
     	btnSend.setEnabled(false);
     	QuizOk=0;
+    	myScore += 1; // 정답 점수 추가
+        sendUpdatedScore();// 점수 보내기
         String msg = String.format("CORRECT:"+ correct);
         SendMessage(msg);
     }
@@ -308,7 +312,6 @@ public class CatchClientView extends JFrame {
     private void sendMessage() {
     	if(correct.equals(txtInput.getText())&& QuizOk!=0) {
     		correct=Quizmanager.setRandomword(correct);
-    		System.out.println("정답보내기");
     		sendCorrect();
     		Graphics g = createcanvas.getGraphics();
         	g.setColor(Color.WHITE); 
@@ -342,6 +345,33 @@ public class CatchClientView extends JFrame {
         }
     }
     
+    private void sendUpdatedScore() { // 닉네임이랑 점수 보냄
+        try {
+            dos.writeUTF("SCORE:" + UserName + ":" + myScore);
+            dos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void initializeScorePanel() {
+        scoreLabel = new JLabel("점수판");
+        scoreLabel.setBounds(10, 600, 170, 100);
+        scoreLabel.setVerticalAlignment(SwingConstants.TOP);
+        scoreLabel.setBorder(new LineBorder(Color.BLACK));
+        contentPane.add(scoreLabel);
+    }
+
+    private void updateScorePanel() {
+        StringBuilder scoreText = new StringBuilder("<html>");
+        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            scoreText.append(entry.getKey()).append(": ").append(entry.getValue()).append("점<br>");
+        }
+        scoreText.append("</html>");
+        scoreLabel.setText(scoreText.toString());
+    }
+    
+    
 
     private void listenToServer() {
         try (DataInputStream input = new DataInputStream(socket.getInputStream())) {
@@ -357,7 +387,7 @@ public class CatchClientView extends JFrame {
                     }
                     
             	}
-            	if (message.startsWith("CORRECT:")) {
+            	if (message.startsWith("CORRECT:")) { //정답일때 넘어감 , 캔버스 초기화
             		if(btnSend!=null)
             			btnSend.setEnabled(true);
                     String Message = message.replace("CORRECT:", "");
@@ -370,6 +400,7 @@ public class CatchClientView extends JFrame {
                         g.dispose(); 
                     	Quizmanager.blindword();
                     	QuizOk=1;
+                    	
                     }
                 }
             	
@@ -426,6 +457,36 @@ public class CatchClientView extends JFrame {
                     String chatMessage = message.replace("CHAT:", "");
                     textArea.append(chatMessage);
                 }
+            	if (message.startsWith("TIMER:")) {
+            		String msg = message.replace("TIMER:", "");
+            		if (msg.equals("expired")) {///// 정답 공개, 다음 문제
+            			JOptionPane.showMessageDialog(Canvas_space, "정답은 " + correct + "입니다.");
+            			if (QuizOk == 0) {
+            				btnSend.setEnabled(false);
+            				QuizOk=0;
+            				correct=Quizmanager.setRandomword(correct);
+                            String msg1 = String.format("CORRECT:"+ correct);
+                            SendMessage(msg1);
+            			}
+            			
+                    	Graphics g = createcanvas.getGraphics();
+                    	g.setColor(Color.WHITE); 
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                        g.dispose(); 
+                        
+            		}
+            		else
+            			timerLabel.setText("남은시간: "+ msg + "초");
+            	}
+            	if (message.startsWith("SCORE_UPDATE:")) {
+            	    String[] scoreUpdate = message.split(":");
+            	    String playerName = scoreUpdate[1];
+            	    int score = Integer.parseInt(scoreUpdate[2]);
+            	    playerScores.put(playerName, score);
+
+            	    // 점수를 화면에 갱신
+            	    updateScorePanel();
+            	}
             	
                 
             }
