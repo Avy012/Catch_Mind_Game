@@ -489,6 +489,12 @@ public class CatchClientView extends JFrame {
                     g.fillRect(0, 0, getWidth(), getHeight());
                     g.dispose(); 
             	}
+            	if (message.startsWith("exit:")) {
+            		String user = message.replace("exit:", "");
+            		playerScores.remove(user); // 나간 유저 점수판에서 제거 
+            		System.out.println(user);
+            		updateScorePanel();
+            	}
             	
             }
         } catch (IOException e) {

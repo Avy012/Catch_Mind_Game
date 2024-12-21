@@ -176,6 +176,11 @@ public class CatchServer {
                 try { /// 유저 나갔을 때 
                 	int index = clients.indexOf(this); 
                 	// 이 인덱스에 있는 userinfo도 삭제
+                	for (ClientHandler client : clients) {
+                        if (client != this) {
+                        	client.send("exit:"+(userInfo.get(index).split(" "))[1]);
+                        }
+                    }
                 	userInfo.remove(index);
                 	existing.remove(index); 
                 	
@@ -192,9 +197,11 @@ public class CatchServer {
                         	client.send("all userinfos:" + ext + "*" + users);
                         }
                     }
-                	if(clients.size()-1 == 0) {
+                	if(clients.size()-1 == 0) {//사용자가 모두 나가면 게임 종료 
                 		start = false;
+                		timer.stop();
                 	}
+                	
             		clients.remove(this);
                     clientSocket.close();
                 } catch (IOException e) {
