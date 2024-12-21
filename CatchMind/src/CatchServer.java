@@ -11,10 +11,17 @@ public class CatchServer {
     private List<String> userInfo =  new ArrayList<String>(); //유저 정보 저장
     private List<Integer> existing = new ArrayList<Integer>(); // 유저 인덱스 저장
     private String quizcorrect=null;
-    private Timer timer;
-    private int timeRemaining;
+    private CatchMindTimer timer; // 타이머 추가
+    private final int TIMER_DURATION = 60; // 기본 타이머 시간 (60초)
     
     public CatchServer(int port) {
+    	 // 타이머 초기화
+        timer = new CatchMindTimer(
+            TIMER_DURATION,
+            this::onTimerExpired,    // 타이머 종료 시
+            this::onTimerUpdate 
+        );
+        
         this.port = port;
     }
 
@@ -33,6 +40,20 @@ public class CatchServer {
             serverSocket.close();
         }
     }
+    
+    private void onTimerExpired() {
+        for (ClientHandler client : clients) {
+            client.send("TIMER:expired");
+            timer.reset(TIMER_DURATION); 
+        }
+    }
+
+    private void onTimerUpdate() { // 시간 매 초 모두에게 보냄 
+        int timeRemaining = timer.getTimeRemaining();
+        for (ClientHandler client : clients) {
+            client.send("TIMER:" + timeRemaining);
+        }
+    }
 
     private class ClientHandler implements Runnable {
         private final Socket clientSocket;
@@ -45,6 +66,7 @@ public class CatchServer {
 
         public void run() {
             try (DataInputStream input = new DataInputStream(clientSocket.getInputStream())) {
+            	
                 String inputLine;
                 
                 for (ClientHandler client : clients) {
@@ -112,6 +134,7 @@ public class CatchServer {
 	                    }
                 	}
                 	else if (inputLine.startsWith("CORRECT:")){ // 정답세팅
+                		timer.reset(TIMER_DURATION); 
                 		quizcorrect = inputLine.replace("CORRECT:", "");
                 		for (ClientHandler client : clients) {
 	                        if (client != this) {
@@ -119,9 +142,18 @@ public class CatchServer {
 	                        }
 	                    }
                 	}
-                	else if (inputLine.startsWith("start")) {
+                	else if (inputLine.startsWith("start")) {//타이머
                 		/// 타이머 시작 + 타이머 시간 모두에게 보냄
-                		
+                		timer.reset(TIMER_DURATION); // 타이머 초기화 후 시작
+                	}
+                	else if (inputLine.startsWith("SCORE:")) {
+                	    String[] scoreInfo = inputLine.split(":");
+                	    String playerName = scoreInfo[1];
+                	    int score = Integer.parseInt(scoreInfo[2]);
+                	    //scores.put(playerName, score); // 서버의 점수 저장소 업데이트
+                	    for (ClientHandler client : clients) {
+                	    	client.send("SCORE_UPDATE:" + playerName + ":" + score);
+                	    }// 모든 클라이언트에 점수 브로드캐스트
                 	}
                 	
                 }

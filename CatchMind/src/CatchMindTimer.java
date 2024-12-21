@@ -5,13 +5,13 @@ import java.awt.event.ActionListener;
 public class CatchMindTimer {
     private Timer timer;
     private int timeRemaining;
-    private JLabel timerLabel;
-    private Runnable onTimeExpired; // 타이머 종료
+    private Runnable onTimeExpired; // 타이머 종료 시 실행할 콜백
+    private Runnable onTimeUpdate;  // 매초 남은 시간을 업데이트하는 콜백
 
-    public CatchMindTimer(JLabel timerLabel, int initialTime, Runnable onTimeExpired) {
-        this.timerLabel = timerLabel;
+    public CatchMindTimer(int initialTime, Runnable onTimeExpired, Runnable onTimeUpdate) {
         this.timeRemaining = initialTime;
         this.onTimeExpired = onTimeExpired;
+        this.onTimeUpdate = onTimeUpdate;
 
         // 타이머 초기화
         timer = new Timer(1000, new ActionListener() {
@@ -19,7 +19,9 @@ public class CatchMindTimer {
             public void actionPerformed(ActionEvent e) {
                 if (timeRemaining > 0) {
                     timeRemaining--;
-                    updateTimerLabel();
+                    if (onTimeUpdate != null) {
+                        onTimeUpdate.run();
+                    }
                 } else {
                     timer.stop();
                     if (onTimeExpired != null) {
@@ -28,7 +30,6 @@ public class CatchMindTimer {
                 }
             }
         });
-        updateTimerLabel();
     }
 
     // 타이머 시작
@@ -45,13 +46,11 @@ public class CatchMindTimer {
     public void reset(int newTime) {
         stop();
         timeRemaining = newTime;
-        //updateTimerLabel();
         start();
     }
 
-    // 남은 시간 업데이트
-    private int updateTimerLabel() {
-        //timerLabel.setText("남은 시간: " + timeRemaining + "초");
-    	return timeRemaining;
+    // 남은 시간 반환
+    public int getTimeRemaining() {
+        return timeRemaining;
     }
 }
