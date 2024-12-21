@@ -55,8 +55,9 @@ public class CatchClientView extends JFrame {
     private int myScore = 0; // 현재 플레이어의 점수
     private Map<String, Integer> playerScores = new HashMap<>();
     private JLabel scoreLabel;
-
-
+    private Map<Integer, JLabel> userImageLabels = new HashMap<>(); // 사용자 이미지 레이블
+    private Map<Integer, JLabel> userNameLabels = new HashMap<>(); // 사용자 이름 레이블
+    
     public CatchClientView(String username, String ip_addr, String port_no, String img_path) {
     	
     	try {
@@ -429,6 +430,8 @@ public class CatchClientView extends JFrame {
             		String[] index = msg[0].split(" ");
             		String[] info = msg[1].split(",");
             		
+            		resetUserPanels(); //유저 패널 리셋
+            		
             		for (int i=0;i<4;i++) {
             			names[i] = "";
             			pics[i] = "";
@@ -494,7 +497,20 @@ public class CatchClientView extends JFrame {
             e.printStackTrace();
         }
     }
-    
+
+    private void resetUserPanels() {
+        // 기존 유저레이블 제거
+        JLayeredPane layeredPane = (JLayeredPane) getContentPane();
+        for (JLabel label : userImageLabels.values()) {
+            layeredPane.remove(label);
+        }
+        for (JLabel label : userNameLabels.values()) {
+            layeredPane.remove(label);
+        }
+        userImageLabels.clear();
+        userNameLabels.clear();
+        layeredPane.repaint();
+    }
     private void user_place(int ppl, String pic, String name) {//매개변수로 자리, 정보 받아서 배치
     	
 	    JLayeredPane layeredPane = (JLayeredPane) getContentPane();
@@ -528,5 +544,11 @@ public class CatchClientView extends JFrame {
         }
         layeredPane.add(characterImageLabel, Integer.valueOf(2)); 
         layeredPane.add(usernameLabel, Integer.valueOf(2)); 
+        
+        userImageLabels.put(ppl, characterImageLabel);  //맵에 이미지 저장
+        userNameLabels.put(ppl, usernameLabel);  //맵에 이름 저장
+
+        layeredPane.revalidate();
+        layeredPane.repaint();
     }
 }
