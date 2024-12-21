@@ -78,9 +78,10 @@ public class CatchClientView extends JFrame {
         
         //로고
         ImageIcon logo = new ImageIcon("images/logo2.png"); /// 캐릭터 이미지 
-        Image img = logo.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);  //이미지 크기
-        JLabel logolabel = new JLabel(new ImageIcon(img));
-        logolabel.setBounds(220, 10, 150, 30);
+        Image logoimg = logo.getImage().getScaledInstance(120, 90, Image.SCALE_SMOOTH);  //이미지 크기
+        JLabel logolabel = new JLabel(new ImageIcon(logoimg));
+        logolabel.setBounds(420, 10, 120, 90);
+        contentPane.add(logolabel);
        
         //캔버스
         drawing = createDrawingPanel();
