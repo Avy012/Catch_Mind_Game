@@ -53,29 +53,14 @@ public class CatchClientView extends JFrame {
     private String correct;
     private JButton btnSend, Quizmake;
     private int myScore = 0; // 현재 플레이어의 점수
-    private Map<String, Integer> playerScores = new HashMap<>();
+    private Map<String, Integer> playerScores = new HashMap<>(); // 전체 스코어
     private JLabel scoreLabel;
     private Map<Integer, JLabel> userImageLabels = new HashMap<>(); // 사용자 이미지 레이블
     private Map<Integer, JLabel> userNameLabels = new HashMap<>(); // 사용자 이름 레이블
     
     public CatchClientView(String username, String ip_addr, String port_no, String img_path) {
     	
-    	try {
-            socket = new Socket(ip_addr, Integer.parseInt(port_no));
-            is = socket.getInputStream();
-            dis = new DataInputStream(is);
-            os = socket.getOutputStream();
-            dos = new DataOutputStream(os);
-            
-            new Thread(this::listenToServer).start();
-            System.out.println(username + " connected");
-           
-            sendUserInfo(img_path, username); // users: 하고 유저 정보 보냄
-            
-            
-        } catch (NumberFormatException | IOException e) {
-            e.printStackTrace();
-        }
+    	
     	
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(250, 50, 1000, 750);
@@ -87,11 +72,15 @@ public class CatchClientView extends JFrame {
         contentPane = new JPanel();
         contentPane.setBounds(0, 0, getWidth(), getHeight());
         contentPane.setLayout(null);
-        layeredPane.add(contentPane, Integer.valueOf(0)); // Add as base layer
+        layeredPane.add(contentPane, Integer.valueOf(0)); 
 
         UserName = username;
-
         
+        //로고
+        ImageIcon logo = new ImageIcon("images/logo2.png"); /// 캐릭터 이미지 
+        Image img = logo.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);  //이미지 크기
+        JLabel logolabel = new JLabel(new ImageIcon(img));
+        logolabel.setBounds(220, 10, 150, 30);
        
         //캔버스
         drawing = createDrawingPanel();
@@ -122,7 +111,9 @@ public class CatchClientView extends JFrame {
 	    quizLabel.setFont(new Font("System", Font.BOLD, 20));
 	    quizLabel.setBorder(new LineBorder(Color.black));
 	    contentPane.add(quizLabel);
+	    // 퀴즈 매니저 초기화
 	    Quizmanager = new QuizWord(quizLabel);
+	    //시작버튼
 	    Quizmake = new JButton("시작");
 	    Quizmake.setBounds(880, 600, 70, 30);
 	    Quizmake.addActionListener(e -> Quizgenerate());
@@ -134,16 +125,32 @@ public class CatchClientView extends JFrame {
         timerLabel.setBorder(new LineBorder(Color.black));
         contentPane.add(timerLabel);
         
-	    userpanel = new JPanel(); // Initialize userpanel
-	    userpanel.setLayout(null); // Set layout manager (if required)
-	    userpanel.setBounds(0, 0, getWidth(), getHeight()); // Adjust bounds as necessary
-	    userpanel.setOpaque(false); // Make transparent if necessary
-	    contentPane.add(userpanel);
-	    
 	    initializeScorePanel();
 	    
-        
+	    startDataCommunication(username, ip_addr, port_no, img_path); // 프레임 초기화 후 데이터 송수신 오픈
+	    
     }
+    
+    private void startDataCommunication(String username, String ip_addr, String port_no, String img_path) {
+    	
+    	try {
+            socket = new Socket(ip_addr, Integer.parseInt(port_no));
+            is = socket.getInputStream();
+            dis = new DataInputStream(is);
+            os = socket.getOutputStream();
+            dos = new DataOutputStream(os);
+            
+            new Thread(this::listenToServer).start();
+            System.out.println(username + " connected");
+           
+            sendUserInfo(img_path, username); // users: 하고 유저 정보 보냄
+            
+            
+        } catch (NumberFormatException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
 
     class UserSquaresPanel extends JPanel {
         @Override
@@ -236,33 +243,13 @@ public class CatchClientView extends JFrame {
         	g.setColor(Color.WHITE); 
             g.fillRect(0, 0, getWidth(), getHeight());
             g.dispose(); 
+            SendMessage("erase");
         });
 
         panel.add(Canvas_space, BorderLayout.CENTER);
         panel.add(color_space, BorderLayout.SOUTH);
         
-        JLabel timerLabel, quizLabel;
         
-        // 타이머 레이블 추가
-        timerLabel = new JLabel("", SwingConstants.CENTER);
-        timerLabel.setBounds(50, 10, 250, 30);
-        timerLabel.setFont(new Font("System", Font.BOLD, 20));
-        timerLabel.setBorder(new LineBorder(Color.black));
-        contentPane.add(timerLabel);
-
-        // 제시어 레이블 추가
-        quizLabel = new JLabel("", SwingConstants.CENTER);
-        quizLabel.setBounds(675, 10, 250, 30);
-        quizLabel.setFont(new Font("System", Font.BOLD, 20));
-        quizLabel.setBorder(new LineBorder(Color.black));
-        contentPane.add(quizLabel);
-        
-        Quizmanager = new QuizWord(quizLabel);  
-
-        
-
-        
-
         return panel;
     }
     
@@ -364,12 +351,15 @@ public class CatchClientView extends JFrame {
     }
 
     private void updateScorePanel() {
-        StringBuilder scoreText = new StringBuilder("<html>");
-        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-            scoreText.append(entry.getKey()).append(": ").append(entry.getValue()).append("점<br>");
-        }
-        scoreText.append("</html>");
-        scoreLabel.setText(scoreText.toString());
+    	if (playerScores!=null) {
+	        StringBuilder scoreText = new StringBuilder("<html>");
+	        scoreText.append("점수판<br>");
+	        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+	            scoreText.append(entry.getKey()).append(": ").append(entry.getValue()).append("점<br>");
+	        }
+	        scoreText.append("</html>");
+	        scoreLabel.setText(scoreText.toString());
+    	}
     }
     
     
@@ -388,12 +378,12 @@ public class CatchClientView extends JFrame {
                     }
                     
             	}
-            	if (message.startsWith("CORRECT:")) { //정답일때 넘어감 , 캔버스 초기화
+            	if (message.startsWith("CORRECT:")) { // 출제자 아닌 사람들한테 문제 바뀔 때 정답알려줌 , 캔버스 초기화
             		if(btnSend!=null)
             			btnSend.setEnabled(true);
                     String Message = message.replace("CORRECT:", "");
                     correct=Message;
-                    if(Quizmanager!=null) {
+                    if(Quizmanager!=null) { 
                     	Quizmake.setEnabled(false);
                     	Graphics g = createcanvas.getGraphics();
                     	g.setColor(Color.WHITE); 
@@ -401,7 +391,6 @@ public class CatchClientView extends JFrame {
                         g.dispose(); 
                     	Quizmanager.blindword();
                     	QuizOk=1;
-                    	
                     }
                 }
             	
@@ -462,7 +451,7 @@ public class CatchClientView extends JFrame {
                 }
             	if (message.startsWith("TIMER:")) {
             		String msg = message.replace("TIMER:", "");
-            		if (msg.equals("expired")) {///// 정답 공개, 다음 문제
+            		if (msg.equals("expired")) {///// 시간 만료 -> 정답 공개, 다음 문제
             			JOptionPane.showMessageDialog(Canvas_space, "정답은 " + correct + "입니다.");
             			if (QuizOk == 0) {
             				btnSend.setEnabled(false);
@@ -486,12 +475,20 @@ public class CatchClientView extends JFrame {
             	    String playerName = scoreUpdate[1];
             	    int score = Integer.parseInt(scoreUpdate[2]);
             	    playerScores.put(playerName, score);
-
+            	    System.out.println(playerName+ score);
             	    // 점수를 화면에 갱신
-            	    updateScorePanel();
+            	    if (playerScores != null ) {
+            	    	updateScorePanel();
+            	    }
+            	    
+            	}
+            	if (message.startsWith("erase")) {
+            		Graphics g = createcanvas.getGraphics();
+                	g.setColor(Color.WHITE); 
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                    g.dispose(); 
             	}
             	
-                
             }
         } catch (IOException e) {
             e.printStackTrace();

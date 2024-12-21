@@ -13,12 +13,14 @@ public class CatchServer {
     private String quizcorrect=null;
     private CatchMindTimer timer; // 타이머 추가
     private final int TIMER_DURATION = 60; // 기본 타이머 시간 (60초)
+    private boolean start = false; // 게임 실행 여부
+    private Map<String, Integer> scores = new HashMap<>(); // 전체 스코어
     
     public CatchServer(int port) {
     	 // 타이머 초기화
         timer = new CatchMindTimer(
             TIMER_DURATION,
-            this::onTimerExpired,    // 타이머 종료 시
+            this::onTimerExpired,// 타이머 종료 시
             this::onTimerUpdate 
         );
         
@@ -62,6 +64,16 @@ public class CatchServer {
         public ClientHandler(Socket socket) throws IOException {
             this.clientSocket = socket;
             this.output = new DataOutputStream(socket.getOutputStream());
+            
+            if (start == true) { // 게임 중에 새로 클라이언트 들어오면
+            	sendInitialState();
+            }
+        }
+        private void sendInitialState() {
+        	send("CORRECT:"+quizcorrect); // 현재 정답 보냄
+        	for (Map.Entry<String, Integer> entry : scores.entrySet()) {
+                send("SCORE_UPDATE:" + entry.getKey() + ":" + entry.getValue());
+            }
         }
 
         public void run() {
@@ -69,9 +81,6 @@ public class CatchServer {
             	
                 String inputLine;
                 
-                for (ClientHandler client : clients) {
-                	client.send(Integer.toString(clients.size())); // 클라이언트 수 보냄
-                }
                 while ((inputLine = input.readUTF()) != null) {
                 	if (inputLine.startsWith("DRAW:")){ // 그리기일때 -> 모두에게 그대로 보냄
 	                    for (ClientHandler client : clients) {
@@ -83,7 +92,6 @@ public class CatchServer {
                 	else if (inputLine.startsWith("users:")) // 유저 정보일때 -> 유저 번호와 함께 보냄
                 	{
                 		String user = Integer.toString(clients.size()-1) + " " + inputLine; 
-                		System.out.println(user);
                 		
                 		String info = inputLine.replace("users:", ""); // users: 빠지고 이미지 주소, 이름만 
                 		
@@ -107,11 +115,8 @@ public class CatchServer {
                 			if (found) break; 
                 		}
                 		existing.add(here);// 유저 들어와있는 인덱스 (0~3)
-                		System.out.println(existing);
                 		
                 		send("Your client number:" + existing.get(clients.size()-1) );
-                		
-                		
                 		
                 		String ext = "";
                 		String users = "";
@@ -137,28 +142,36 @@ public class CatchServer {
                 		timer.reset(TIMER_DURATION); 
                 		quizcorrect = inputLine.replace("CORRECT:", "");
                 		for (ClientHandler client : clients) {
-	                        if (client != this) {
+	                        if (client != this) { // 이 메시지 준 사람 빼고 정답 다 보냄 (출제자 빼고) 
 	                            client.send(inputLine);
 	                        }
 	                    }
                 	}
-                	else if (inputLine.startsWith("start")) {//타이머
+                	else if (inputLine.startsWith("start")) {// 시작함 ! 
                 		/// 타이머 시작 + 타이머 시간 모두에게 보냄
                 		timer.reset(TIMER_DURATION); // 타이머 초기화 후 시작
+                		start = true;
                 	}
                 	else if (inputLine.startsWith("SCORE:")) {
                 	    String[] scoreInfo = inputLine.split(":");
                 	    String playerName = scoreInfo[1];
                 	    int score = Integer.parseInt(scoreInfo[2]);
-                	    //scores.put(playerName, score); // 서버의 점수 저장소 업데이트
-                	    for (ClientHandler client : clients) {
+                	    scores.put(playerName, score); // 점수 저장
+                	    for (ClientHandler client : clients) {// 모든 클라이언트에 점수 보냄
                 	    	client.send("SCORE_UPDATE:" + playerName + ":" + score);
-                	    }// 모든 클라이언트에 점수 브로드캐스트
+                	    }
+                	}
+                	else if (inputLine.startsWith("erase")) { // 캔버스 지우기
+                		for (ClientHandler client : clients) {
+                			if (client != this)
+                				client.send(inputLine);
+                	    }
                 	}
                 	
                 }
             } catch (IOException e) {
-                System.out.println("Client disconnected: " );
+            	int index = clients.indexOf(this); 
+                System.out.println((userInfo.get(index).split(" "))[1]+" 님이 퇴장하였습니다." );
             } finally {
                 try { /// 유저 나갔을 때 
                 	int index = clients.indexOf(this); 
@@ -179,7 +192,9 @@ public class CatchServer {
                         	client.send("all userinfos:" + ext + "*" + users);
                         }
                     }
-                	
+                	if(clients.size()-1 == 0) {
+                		start = false;
+                	}
             		clients.remove(this);
                     clientSocket.close();
                 } catch (IOException e) {
